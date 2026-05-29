@@ -71,7 +71,7 @@ export default async function IngresarPage({
             <form action={devSignIn} className="space-y-3">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-400">
-                  Acceso de prueba (solo desarrollo)
+                  Ingresá con tu email
                 </label>
                 <input
                   name="email"

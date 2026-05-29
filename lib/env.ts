@@ -14,7 +14,12 @@ const envSchema = z.object({
 
   // Dominio raíz para el multitenancy por subdominio.
   // Dev: "lvh.me:3000" (wildcard -> 127.0.0.1). Prod: "tuapp.com".
-  NEXT_PUBLIC_ROOT_DOMAIN: z.string().min(1).default("lvh.me:3000"),
+  // Tolera vacío ("") además de ausente: algunos entornos de build inyectan la
+  // var vacía y .default() solo cubre undefined, no "".
+  NEXT_PUBLIC_ROOT_DOMAIN: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : "lvh.me:3000")),
 
   // Auth.js
   AUTH_SECRET: z.string().optional(),
@@ -42,4 +47,6 @@ export const env = parsed.data;
 
 // Dominio raíz accesible también en cliente (para construir URLs de subdominio).
 export const ROOT_DOMAIN =
-  process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "lvh.me:3000";
+  process.env.NEXT_PUBLIC_ROOT_DOMAIN && process.env.NEXT_PUBLIC_ROOT_DOMAIN.length > 0
+    ? process.env.NEXT_PUBLIC_ROOT_DOMAIN
+    : "lvh.me:3000";

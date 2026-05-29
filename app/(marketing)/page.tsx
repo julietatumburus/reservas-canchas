@@ -24,7 +24,6 @@ export default function LandingPage() {
       <Navbar />
       <main className="flex-1">
         <Hero />
-        <LogoStrip />
         <Sports />
         <HowItWorks />
         <Features />
@@ -158,21 +157,6 @@ function BookingPreview() {
           <CardIcon width={18} height={18} />
           Reservar y pagar
         </button>
-      </div>
-    </div>
-  );
-}
-
-function LogoStrip() {
-  return (
-    <div className="border-y border-white/5 bg-bg-soft/50">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-3 px-5 py-6 text-sm text-slate-500 sm:px-8">
-        <span>Integramos con</span>
-        {["MercadoPago", "Google", "WhatsApp", "Google Calendar"].map((n) => (
-          <span key={n} className="font-semibold text-slate-400">
-            {n}
-          </span>
-        ))}
       </div>
     </div>
   );

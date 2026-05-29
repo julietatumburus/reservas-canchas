@@ -10,9 +10,12 @@ const superadminEmails = (process.env.SUPERADMIN_EMAILS ?? "")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
-// El login de prueba (Credentials) solo se habilita fuera de producción.
-const allowDevLogin =
-  process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_LOGIN !== "false";
+// El login de prueba (Credentials) se habilita fuera de producción, o en prod
+// SOLO si se pide explícitamente con ALLOW_DEV_LOGIN=true (inseguro: cualquiera
+// entra como cualquier email; usar únicamente para testear, sacar antes de lanzar).
+export const devLoginEnabled =
+  process.env.ALLOW_DEV_LOGIN === "true" ||
+  (process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_LOGIN !== "false");
 
 const providers: NextAuthConfig["providers"] = [];
 
@@ -26,7 +29,7 @@ if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
   );
 }
 
-if (allowDevLogin) {
+if (devLoginEnabled) {
   providers.push(
     Credentials({
       id: "dev",

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
-import { signIn, auth } from "@/lib/auth";
+import { signIn, auth, devLoginEnabled } from "@/lib/auth";
 
 export default async function IngresarPage({
   searchParams,
@@ -17,9 +17,7 @@ export default async function IngresarPage({
   const googleEnabled = !!(
     process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
   );
-  const devEnabled =
-    process.env.NODE_ENV !== "production" &&
-    process.env.ALLOW_DEV_LOGIN !== "false";
+  const devEnabled = devLoginEnabled;
 
   async function googleSignIn() {
     "use server";

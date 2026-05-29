@@ -1,0 +1,337 @@
+// Reservas-Canchas — SaaS multitenant de reservas de canchas (padel/tenis)
+// Prisma 7: generador prisma-client + driver adapter (@prisma/adapter-pg).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+
+enum SportType {
+  PADEL
+  TENIS
+  FUTBOL
+  OTRO
+}
+
+enum UserRole {
+  USER
+  SUPERADMIN
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  STAFF
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum PaymentType {
+  BOOKING
+  SUBSCRIPTION
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+  CANCELLED
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PRO
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+enum ExceptionType {
+  CLOSED
+  SPECIAL
+}
+
+// ----------------------------------------------------------------------------
+// Tenant: Club
+// ----------------------------------------------------------------------------
+
+model Club {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique // subdominio: <slug>.tuapp.com
+  logoUrl  String?
+  address  String?
+  city     String?
+  phone    String?
+  sports   SportType[]
+  timezone String  @default("America/Argentina/Buenos_Aires")
+
+  // Ventana de reserva: hasta cuántos días en el futuro puede reservar un jugador.
+  bookingWindowDays Int @default(14)
+
+  // Cuenta de MercadoPago del club (token encriptado en reposo).
+  mpAccessToken String?
+
+  subscriptionStatus SubscriptionStatus @default(TRIALING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships       Membership[]
+  courts            Court[]
+  bookings          Booking[]
+  recurringBookings RecurringBooking[]
+  payments          Payment[]
+  subscription      Subscription?
+
+  @@index([slug])
+}
+
+// ----------------------------------------------------------------------------
+// Auth: User + modelos del adapter de Auth.js
+// ----------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  role          UserRole  @default(USER)
+  emailVerified DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts    Account[]
+  sessions    Session[]
+  memberships Membership[]
+  bookings    Booking[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ----------------------------------------------------------------------------
+// Membresías (staff de cada club)
+// ----------------------------------------------------------------------------
+
+model Membership {
+  id     String         @id @default(cuid())
+  userId String
+  clubId String
+  role   MembershipRole @default(STAFF)
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clubId])
+  @@index([clubId])
+}
+
+// ----------------------------------------------------------------------------
+// Canchas y disponibilidad
+// ----------------------------------------------------------------------------
+
+model Court {
+  id      String    @id @default(cuid())
+  clubId  String
+  name    String
+  sport   SportType
+  surface String?
+  indoor  Boolean   @default(false)
+  active  Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club              Club                   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  availability      WeeklyAvailability[]
+  exceptions        AvailabilityException[]
+  bookings          Booking[]
+  recurringBookings RecurringBooking[]
+
+  @@index([clubId])
+}
+
+// Ventana horaria semanal por cancha. Los slots concretos se generan en runtime
+// a partir de estas ventanas (no se materializan filas por turno disponible).
+// Se permiten varias filas por día (ej. turno mañana y turno tarde).
+model WeeklyAvailability {
+  id           String @id @default(cuid())
+  courtId      String
+  dayOfWeek    Int // 0=domingo ... 6=sábado
+  startMinutes Int // minutos desde medianoche (ej. 8:00 => 480)
+  endMinutes   Int // exclusivo
+  slotMinutes  Int    @default(60)
+  priceCents   Int    @default(0)
+
+  court Court @relation(fields: [courtId], references: [id], onDelete: Cascade)
+
+  @@index([courtId, dayOfWeek])
+}
+
+// Excepción puntual para una fecha: cierre o horario especial.
+model AvailabilityException {
+  id           String        @id @default(cuid())
+  courtId      String
+  date         DateTime      @db.Date
+  type         ExceptionType
+  startMinutes Int?
+  endMinutes   Int?
+  note         String?
+
+  court Court @relation(fields: [courtId], references: [id], onDelete: Cascade)
+
+  @@index([courtId, date])
+}
+
+// ----------------------------------------------------------------------------
+// Turnos (Bookings) y pagos
+// ----------------------------------------------------------------------------
+
+model Booking {
+  id        String        @id @default(cuid())
+  clubId    String
+  courtId   String
+  userId    String? // null = turno cargado por el staff para un walk-in
+  startTime DateTime
+  endTime   DateTime
+  status    BookingStatus @default(PENDING)
+  priceCents Int          @default(0)
+  currency  String        @default("ARS")
+
+  customerName  String?
+  customerPhone String?
+  notes         String?
+
+  paymentId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club    Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  court   Court    @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@unique([courtId, startTime]) // evita doble reserva del mismo inicio de slot
+  @@index([clubId, startTime])
+  @@index([userId])
+}
+
+// Turno fijo: reserva recurrente semanal de un cliente (ej. todos los martes
+// 20:00). No se materializan bookings; la grilla consulta estas filas para
+// marcar el slot ocupado en cada fecha dentro de la vigencia.
+model RecurringBooking {
+  id           String  @id @default(cuid())
+  clubId       String
+  courtId      String
+  dayOfWeek    Int // 0=domingo ... 6=sábado
+  startMinutes Int // minutos desde medianoche
+  endMinutes   Int // exclusivo
+  priceCents   Int     @default(0)
+
+  customerName  String
+  customerPhone String?
+  notes         String?
+
+  validFrom  DateTime  @db.Date
+  validUntil DateTime? @db.Date // null = sin fecha de fin
+  active     Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club  Club  @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  court Court @relation(fields: [courtId], references: [id], onDelete: Cascade)
+
+  @@index([courtId, dayOfWeek])
+  @@index([clubId])
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  clubId         String
+  type           PaymentType
+  status         PaymentStatus @default(PENDING)
+  amountCents    Int
+  currency       String        @default("ARS")
+  mpPaymentId    String?       @unique
+  mpPreferenceId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club    Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  booking Booking?
+
+  @@index([clubId])
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  clubId           String             @unique
+  plan             SubscriptionPlan   @default(FREE)
+  status           SubscriptionStatus @default(TRIALING)
+  mpSubscriptionId String?
+  currentPeriodEnd DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+}

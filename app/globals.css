@@ -1,26 +1,84 @@
 @import "tailwindcss";
 
+@theme {
+  --color-bg: #1a1d24;
+  --color-bg-soft: #1f232c;
+  --color-surface: #262b36;
+  --color-border: #363d4b;
+
+  /* Azul "cancha de padel" — color de marca primario */
+  --color-brand-50: #eaf4fd;
+  --color-brand-300: #8fc7ef;
+  --color-brand-400: #2f9be6;
+  --color-brand-500: #1f7ad4;
+  --color-brand-600: #155fb0;
+
+  /* Verde "pelota" (amarillo-verdoso fluor) — acento */
+  --color-accent-300: #dcf06b;
+  --color-accent-400: #c2e636;
+  --color-accent-500: #a3c91f;
+
+  /* Rojo/coral del contorno de la cancha — detalle visual */
+  --color-court-red: #db4f3f;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: #e2e8f0;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: color-mix(in oklab, var(--color-brand-400) 35%, transparent);
+  color: #fff;
+}
+
+/* Pelotas flotando */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(8deg); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-float { animation: none; }
+}
+
+/* Utilidades de marca reutilizables */
+.text-gradient {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-brand-300),
+    var(--color-accent-300)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass {
+  background: color-mix(in oklab, var(--color-surface) 60%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in oklab, var(--color-border) 80%, transparent);
+}
+
+/* Fondo con grilla sutil + glow */
+.bg-grid {
+  background-image:
+    radial-gradient(60% 50% at 50% 0%, rgba(31, 122, 212, 0.22), transparent 70%),
+    linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 100% 100%, 56px 56px, 56px 56px;
 }

@@ -32,7 +32,7 @@ export default async function PanelHome({
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Link
-          href="/panel/canchas"
+          href={`/club/${slug}/panel/canchas`}
           className="group flex items-center justify-between rounded-2xl border border-white/8 bg-surface/50 p-5 transition-colors hover:border-brand-400/40"
         >
           <div className="flex items-center gap-3">
@@ -52,7 +52,7 @@ export default async function PanelHome({
         </Link>
 
         <Link
-          href="/panel/reservas"
+          href={`/club/${slug}/panel/reservas`}
           className="group flex items-center justify-between rounded-2xl border border-white/8 bg-surface/50 p-5 transition-colors hover:border-brand-400/40"
         >
           <div className="flex items-center gap-3">

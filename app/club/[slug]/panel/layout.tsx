@@ -56,7 +56,7 @@ export default async function PanelLayout({
 
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-5 py-8 sm:flex-row">
         <aside className="sm:w-48 sm:shrink-0">
-          <PanelNav />
+          <PanelNav slug={slug} />
         </aside>
         <main className="min-w-0 flex-1">{children}</main>
       </div>

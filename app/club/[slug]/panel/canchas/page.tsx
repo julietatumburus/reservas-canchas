@@ -102,7 +102,7 @@ export default async function CanchasPage({
 
             <div className="flex items-center gap-2">
               <Link
-                href={`/panel/canchas/${c.id}`}
+                href={`/club/${slug}/panel/canchas/${c.id}`}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-white hover:bg-white/10"
               >
                 <ClockIcon width={16} height={16} />

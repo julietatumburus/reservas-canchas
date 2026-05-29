@@ -78,7 +78,7 @@ export default async function ClubPage({
         <Logo href="/" />
         {canManage ? (
           <Link
-            href="/panel"
+            href={`/club/${slug}/panel`}
             className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-400 to-accent-400 px-4 py-2 text-sm font-semibold text-[#06121f]"
           >
             Ir al panel
@@ -116,7 +116,7 @@ export default async function ClubPage({
         <div className="mt-6 flex flex-wrap items-center gap-2">
           {canPrev ? (
             <Link
-              href={`/?date=${prev}`}
+              href={`/club/${slug}?date=${prev}`}
               className="rounded-lg border border-white/15 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
             >
               ← Anterior
@@ -131,7 +131,7 @@ export default async function ClubPage({
           </span>
           {canNext ? (
             <Link
-              href={`/?date=${next}`}
+              href={`/club/${slug}?date=${next}`}
               className="rounded-lg border border-white/15 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
             >
               Siguiente →

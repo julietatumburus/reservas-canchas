@@ -31,7 +31,7 @@ export function BookingGrid({
   slotsByCourt: Record<string, AgendaSlot[]>;
   crearAction: (fd: FormData) => Promise<ReservaResult>;
 }) {
-  const loginHref = `/ingresar?callbackUrl=${encodeURIComponent(`${clubBaseUrl}/?date=${date}`)}`;
+  const loginHref = `/ingresar?callbackUrl=${encodeURIComponent(`${clubBaseUrl}?date=${date}`)}`;
   const [sel, setSel] = useState<{ court: Court; slot: AgendaSlot } | null>(null);
 
   const sinTurnos = courts.every((c) => (slotsByCourt[c.id] ?? []).length === 0);

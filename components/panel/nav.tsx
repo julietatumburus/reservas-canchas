@@ -4,24 +4,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
-  { href: "/panel", label: "Resumen", exact: true },
-  { href: "/panel/reservas", label: "Reservas", exact: false },
-  { href: "/panel/canchas", label: "Canchas", exact: false },
-  { href: "/panel/cierres", label: "Cierres", exact: false },
-  { href: "/panel/ajustes", label: "Ajustes", exact: false },
+  { seg: "", label: "Resumen", exact: true },
+  { seg: "/reservas", label: "Reservas", exact: false },
+  { seg: "/canchas", label: "Canchas", exact: false },
+  { seg: "/cierres", label: "Cierres", exact: false },
+  { seg: "/ajustes", label: "Ajustes", exact: false },
 ];
 
-export function PanelNav() {
+export function PanelNav({ slug }: { slug: string }) {
   const path = usePathname();
+  const base = `/club/${slug}/panel`;
 
   return (
     <nav className="flex gap-1 sm:flex-col">
       {items.map((it) => {
-        const active = it.exact ? path === it.href : path.startsWith(it.href);
+        const href = `${base}${it.seg}`;
+        const active = it.exact ? path === href : path.startsWith(href);
         return (
           <Link
-            key={it.href}
-            href={it.href}
+            key={href}
+            href={href}
             className={[
               "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
               active

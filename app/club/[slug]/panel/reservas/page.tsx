@@ -46,7 +46,7 @@ export default async function ReservasPage({
           <p className="mt-1 text-sm capitalize text-slate-400">{fmtFecha(dateStr)}</p>
         </div>
         <Link
-          href="/panel/reservas/fijos"
+          href={`/club/${slug}/panel/reservas/fijos`}
           className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-white hover:bg-white/10"
         >
           <CalendarIcon width={16} height={16} />
@@ -56,19 +56,19 @@ export default async function ReservasPage({
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Link
-          href={`/panel/reservas?date=${prev}`}
+          href={`/club/${slug}/panel/reservas?date=${prev}`}
           className="rounded-lg border border-white/15 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
         >
           ← Anterior
         </Link>
         <Link
-          href="/panel/reservas"
+          href={`/club/${slug}/panel/reservas`}
           className="rounded-lg border border-white/15 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
         >
           Hoy
         </Link>
         <Link
-          href={`/panel/reservas?date=${next}`}
+          href={`/club/${slug}/panel/reservas?date=${next}`}
           className="rounded-lg border border-white/15 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
         >
           Siguiente →

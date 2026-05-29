@@ -47,9 +47,7 @@ export function getSubdomain(host: string | null | undefined): string | null {
   return null;
 }
 
-/** Construye la URL pública de un club (para links desde la landing). */
+/** Ruta pública de un club. Multitenancy por ruta: /club/<slug> en el mismo dominio. */
 export function clubUrl(slug: string): string {
-  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "lvh.me:3000";
-  const protocol = root.includes(":") ? "http" : "https";
-  return `${protocol}://${slug}.${root}`;
+  return `/club/${slug}`;
 }

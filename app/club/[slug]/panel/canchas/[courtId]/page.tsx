@@ -38,7 +38,7 @@ export default async function HorariosPage({
 
   return (
     <div>
-      <Link href="/panel/canchas" className="text-sm text-slate-400 hover:text-white">
+      <Link href={`/club/${slug}/panel/canchas`} className="text-sm text-slate-400 hover:text-white">
         ← Canchas
       </Link>
       <h1 className="mt-2 text-2xl font-bold tracking-tight text-white">

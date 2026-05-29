@@ -10,6 +10,14 @@ const superadminEmails = (process.env.SUPERADMIN_EMAILS ?? "")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
+// Allowlist del login de prueba: emails autorizados a entrar con dev-login.
+// En producción, si está vacía, NADIE entra por dev-login (salvo superadmins).
+// En dev, vacía = cualquier email (comodidad local).
+const devLoginEmails = (process.env.DEV_LOGIN_EMAILS ?? "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
 // El login de prueba (Credentials) se habilita fuera de producción, o en prod
 // SOLO si se pide explícitamente con ALLOW_DEV_LOGIN=true (inseguro: cualquiera
 // entra como cualquier email; usar únicamente para testear, sacar antes de lanzar).
@@ -38,6 +46,13 @@ if (devLoginEnabled) {
       async authorize(creds) {
         const email = String(creds?.email ?? "").trim().toLowerCase();
         if (!email.includes("@")) return null;
+        // Capa de seguridad: limitar quién puede usar el login de prueba.
+        const isProd = process.env.NODE_ENV === "production";
+        const permitido =
+          superadminEmails.includes(email) ||
+          devLoginEmails.includes(email) ||
+          (!isProd && devLoginEmails.length === 0);
+        if (!permitido) return null;
         const role = superadminEmails.includes(email) ? "SUPERADMIN" : "USER";
         const user = await prisma.user.upsert({
           where: { email },

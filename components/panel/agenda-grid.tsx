@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { formatCents } from "@/lib/slots";
 import type { AgendaSlot } from "@/lib/availability";
 
@@ -134,6 +135,12 @@ function SlotRow({
                 </button>
               </form>
             )}
+            <Link
+              href={`/club/${slug}/panel/reservas/${slot.bookingId}/editar`}
+              className="rounded-md border border-white/15 px-2 py-1 text-[11px] text-slate-200 hover:bg-white/5"
+            >
+              Editar
+            </Link>
             <form action={cancelarAction}>
               <input type="hidden" name="slug" value={slug} />
               <input type="hidden" name="bookingId" value={slot.bookingId} />

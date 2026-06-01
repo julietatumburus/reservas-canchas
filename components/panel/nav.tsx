@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const items = [
   { seg: "", label: "Resumen", exact: true },
   { seg: "/reservas", label: "Reservas", exact: false },
+  { seg: "/clientes", label: "Clientes", exact: false },
   { seg: "/canchas", label: "Canchas", exact: false },
   { seg: "/cierres", label: "Cierres", exact: false },
   { seg: "/ajustes", label: "Ajustes", exact: false },

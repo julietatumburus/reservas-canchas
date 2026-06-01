@@ -299,6 +299,30 @@ export async function cancelarReserva(formData: FormData) {
   revalidatePath(`/club/${slug}/panel/reservas`);
 }
 
+/** Edita info de una reserva (nombre, teléfono, precio, notas). */
+export async function editarReserva(formData: FormData) {
+  const slug = String(formData.get("slug"));
+  const bookingId = String(formData.get("bookingId") ?? "");
+  const { club } = await requireClubAccess(slug);
+
+  const customerName = String(formData.get("customerName") ?? "").trim();
+  const customerPhoneRaw = String(formData.get("customerPhone") ?? "").trim();
+  const customerPhone = customerPhoneRaw.length > 0 ? customerPhoneRaw : null;
+  const pesos = Math.max(0, Math.round(Number(formData.get("price") ?? 0)));
+  const priceCents = pesos * 100;
+  const notesRaw = String(formData.get("notes") ?? "").trim();
+  const notes = notesRaw.length > 0 ? notesRaw : null;
+
+  if (customerName.length < 2) return;
+
+  await prisma.booking.updateMany({
+    where: { id: bookingId, clubId: club.id },
+    data: { customerName, customerPhone, priceCents, notes },
+  });
+  revalidatePath(`/club/${slug}/panel/reservas`);
+  revalidatePath(`/club/${slug}/panel/clientes`);
+}
+
 /** El staff marca el pago recibido (transferencia/WhatsApp) → CONFIRMED. */
 export async function confirmarPagoReserva(formData: FormData) {
   const slug = String(formData.get("slug"));

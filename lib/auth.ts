@@ -65,47 +65,19 @@ if (devLoginEnabled) {
   );
 }
 
-// La cookie de sesión debe compartirse entre el dominio raíz y los subdominios
-// de cada club (multitenancy). Por eso fijamos el dominio a ".<root>".
-const rootHost = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "lvh.me:3000").split(
-  ":",
-)[0];
-const useSecureCookies = process.env.NODE_ENV === "production";
-const cookieDomain = rootHost === "localhost" ? undefined : `.${rootHost}`;
-
+// Multitenancy por ruta en un solo dominio: cookie host-only (sin dominio fijo).
+// Auth.js maneja "secure" automáticamente según el protocolo (HTTPS en prod).
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   trustHost: true,
   pages: { signIn: "/ingresar" },
-  cookies: cookieDomain
-    ? {
-        sessionToken: {
-          name: `${useSecureCookies ? "__Secure-" : ""}authjs.session-token`,
-          options: {
-            httpOnly: true,
-            sameSite: "lax",
-            path: "/",
-            secure: useSecureCookies,
-            domain: cookieDomain,
-          },
-        },
-      }
-    : undefined,
   providers,
   callbacks: {
-    // Multitenancy: permitir redirigir al dominio raíz y a cualquier subdominio
-    // de club (Auth.js por defecto fuerza el host base y se perdía el subdominio).
     async redirect({ url, baseUrl }) {
       try {
         const u = new URL(url, baseUrl);
-        if (
-          u.hostname === rootHost ||
-          u.hostname.endsWith(`.${rootHost}`) ||
-          u.hostname === "localhost"
-        ) {
-          return u.toString();
-        }
+        if (u.origin === baseUrl) return u.toString(); // mismo origen, seguro
       } catch {
         // url inválida -> caer al baseUrl
       }

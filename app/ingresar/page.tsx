@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AuthError } from "next-auth";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { signIn, auth, devLoginEnabled } from "@/lib/auth";
@@ -27,7 +28,15 @@ export default async function IngresarPage({
   async function devSignIn(formData: FormData) {
     "use server";
     const email = String(formData.get("email") ?? "");
-    await signIn("dev", { email, redirectTo: dest });
+    try {
+      await signIn("dev", { email, redirectTo: dest });
+    } catch (err) {
+      // Email no autorizado u otra falla de credenciales -> mensaje, no crash.
+      if (err instanceof AuthError) {
+        redirect(`/ingresar?error=denied`);
+      }
+      throw err; // re-lanzar el redirect de éxito (NEXT_REDIRECT)
+    }
   }
 
   return (
@@ -44,7 +53,7 @@ export default async function IngresarPage({
 
         {error && (
           <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-            No pudimos iniciar sesión. Probá de nuevo.
+            No pudimos iniciar sesión. Verificá que tu email esté autorizado.
           </p>
         )}
 

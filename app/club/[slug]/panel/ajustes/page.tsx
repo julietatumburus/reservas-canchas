@@ -38,11 +38,76 @@ export default async function AjustesPage({
               max={365}
               defaultValue={club.bookingWindowDays}
               disabled={!canEdit}
-              className="w-28 rounded-xl border border-white/15 bg-surface px-3 py-2.5 text-sm text-white focus:border-brand-400 focus:outline-none disabled:opacity-60"
+              className={inputClass + " w-28"}
             />
             <span className="text-sm text-slate-400">días</span>
           </div>
         </label>
+
+        <div className="border-t border-white/8 pt-4">
+          <span className="text-sm font-semibold text-white">
+            Seña (cobro por MercadoPago)
+          </span>
+          <p className="mt-1 text-xs text-slate-400">
+            El jugador paga la seña al reservar. El turno queda confirmado cuando
+            MercadoPago aprueba el pago.
+          </p>
+
+          <label className="mt-3 block text-xs text-slate-400">
+            Modo
+            <select
+              name="depositMode"
+              defaultValue={club.depositMode}
+              disabled={!canEdit}
+              className={inputClass + " mt-1"}
+            >
+              <option value="NONE">Sin seña (turno confirmado al instante)</option>
+              <option value="PERCENT">Porcentaje del precio</option>
+              <option value="FIXED">Monto fijo</option>
+            </select>
+          </label>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="block text-xs text-slate-400">
+              Porcentaje (%)
+              <input
+                type="number"
+                name="depositPercent"
+                min={0}
+                max={100}
+                step={5}
+                defaultValue={club.depositPercent}
+                disabled={!canEdit}
+                className={inputClass + " mt-1"}
+              />
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Solo se usa si el modo es &quot;Porcentaje&quot;.
+              </span>
+            </label>
+
+            <label className="block text-xs text-slate-400">
+              Monto fijo ($)
+              <input
+                type="number"
+                name="depositAmount"
+                min={0}
+                step={500}
+                defaultValue={Math.round((club.depositAmountCents || 0) / 100)}
+                disabled={!canEdit}
+                className={inputClass + " mt-1"}
+              />
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Solo se usa si el modo es &quot;Monto fijo&quot;.
+              </span>
+            </label>
+          </div>
+
+          <p className="mt-3 text-[11px] text-slate-500">
+            Necesitás configurar la variable <code>MP_ACCESS_TOKEN</code> en el
+            server con el token de MercadoPago. Sin token, los turnos con seña no
+            se pueden cobrar.
+          </p>
+        </div>
 
         {canEdit && (
           <button
@@ -56,3 +121,6 @@ export default async function AjustesPage({
     </div>
   );
 }
+
+const inputClass =
+  "rounded-xl border border-white/15 bg-surface px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-brand-400 focus:outline-none disabled:opacity-60";

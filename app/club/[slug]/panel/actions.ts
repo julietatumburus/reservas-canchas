@@ -116,6 +116,9 @@ export async function borrarHorario(formData: FormData) {
 
 // ---- Ajustes del club -----------------------------------------------------
 
+const DEPOSIT_MODES = ["NONE", "FIXED", "PERCENT"] as const;
+type DepositMode = (typeof DEPOSIT_MODES)[number];
+
 export async function actualizarAjustes(formData: FormData) {
   const slug = String(formData.get("slug"));
   const { club } = await requireClubAccess(slug, ["OWNER", "ADMIN"]);
@@ -123,9 +126,27 @@ export async function actualizarAjustes(formData: FormData) {
   const raw = Math.round(Number(formData.get("bookingWindowDays") ?? 14));
   const bookingWindowDays = Math.min(365, Math.max(1, Number.isFinite(raw) ? raw : 14));
 
+  const modeRaw = String(formData.get("depositMode") ?? "NONE");
+  const depositMode: DepositMode = (DEPOSIT_MODES as readonly string[]).includes(modeRaw)
+    ? (modeRaw as DepositMode)
+    : "NONE";
+
+  // En el form la seña fija se carga en pesos; se persiste en centavos.
+  const fixedPesos = Math.max(0, Math.round(Number(formData.get("depositAmount") ?? 0)));
+  const depositAmountCents = fixedPesos * 100;
+  const depositPercent = Math.min(
+    100,
+    Math.max(0, Math.round(Number(formData.get("depositPercent") ?? 0))),
+  );
+
   await prisma.club.update({
     where: { id: club.id },
-    data: { bookingWindowDays },
+    data: {
+      bookingWindowDays,
+      depositMode,
+      depositAmountCents,
+      depositPercent,
+    },
   });
   revalidatePath(`/club/${slug}/panel/ajustes`);
 }

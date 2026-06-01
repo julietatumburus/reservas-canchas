@@ -71,6 +71,13 @@ enum ExceptionType {
   SPECIAL
 }
 
+// Cómo el club cobra la seña al reservar.
+enum DepositMode {
+  NONE    // sin seña (reserva queda confirmada)
+  FIXED   // monto fijo en centavos
+  PERCENT // porcentaje del precio (0-100)
+}
+
 // ----------------------------------------------------------------------------
 // Tenant: Club
 // ----------------------------------------------------------------------------
@@ -91,6 +98,11 @@ model Club {
 
   // Cuenta de MercadoPago del club (token encriptado en reposo).
   mpAccessToken String?
+
+  // Seña: cómo cobrar el depósito al reservar (MercadoPago).
+  depositMode        DepositMode @default(NONE)
+  depositAmountCents Int         @default(0) // usado si depositMode = FIXED
+  depositPercent     Int         @default(0) // usado si depositMode = PERCENT (0-100)
 
   subscriptionStatus SubscriptionStatus @default(TRIALING)
 

@@ -12,7 +12,7 @@ const SPORT_LABEL: Record<string, string> = {
 };
 
 type Court = { id: string; name: string; sport: string };
-type ReservaResult = { error?: string };
+type ReservaResult = { error?: string; redirectUrl?: string };
 
 export function BookingGrid({
   slug,
@@ -149,8 +149,14 @@ function ConfirmarModal({
     setError(null);
     start(async () => {
       const res = await crearAction(fd);
-      if (res?.error) setError(res.error);
-      else setDone(true);
+      if (res?.error) {
+        setError(res.error);
+      } else if (res?.redirectUrl) {
+        // Seña con MercadoPago: el jugador va al checkout.
+        window.location.href = res.redirectUrl;
+      } else {
+        setDone(true);
+      }
     });
   }
 

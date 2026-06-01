@@ -11,9 +11,11 @@ import {
   shiftDate,
   utcToLocalMinutes,
 } from "@/lib/availability";
+import { minutesToTime } from "@/lib/slots";
 import { validarSlot } from "@/lib/booking";
+import { computeDeposit, createMpPreference } from "@/lib/payments";
 
-export type ReservaResult = { error?: string };
+export type ReservaResult = { error?: string; redirectUrl?: string };
 
 export async function crearReservaJugador(
   formData: FormData,
@@ -65,23 +67,89 @@ export async function crearReservaJugador(
   );
   if (error) return { error };
 
+  const startUtc = localToUtc(dateStr, startMinutes, club.timezone);
+  const endUtc = localToUtc(dateStr, endMinutes, club.timezone);
+  const depositCents = computeDeposit(priceCents, club);
+
+  // Sin seña: confirmar el turno directo.
+  if (depositCents <= 0) {
+    try {
+      await prisma.booking.create({
+        data: {
+          clubId: club.id,
+          courtId,
+          userId: session.user.id,
+          startTime: startUtc,
+          endTime: endUtc,
+          status: "CONFIRMED",
+          priceCents,
+          customerName: session.user.name ?? null,
+        },
+      });
+    } catch {
+      return { error: "Ese turno se acaba de ocupar." };
+    }
+    revalidatePath(`/club/${slug}`);
+    return {};
+  }
+
+  // Con seña: turno PENDING + Payment PENDING + Preference de MP.
+  let bookingId: string;
+  let paymentId: string;
   try {
-    await prisma.booking.create({
-      data: {
-        clubId: club.id,
-        courtId,
-        userId: session.user.id,
-        startTime: localToUtc(dateStr, startMinutes, club.timezone),
-        endTime: localToUtc(dateStr, endMinutes, club.timezone),
-        status: "CONFIRMED",
-        priceCents,
-        customerName: session.user.name ?? null,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.create({
+        data: {
+          clubId: club.id,
+          type: "BOOKING",
+          status: "PENDING",
+          amountCents: depositCents,
+          currency: "ARS",
+        },
+      });
+      const booking = await tx.booking.create({
+        data: {
+          clubId: club.id,
+          courtId,
+          userId: session.user.id,
+          startTime: startUtc,
+          endTime: endUtc,
+          status: "PENDING",
+          priceCents,
+          customerName: session.user.name ?? null,
+          paymentId: payment.id,
+        },
+      });
+      return { booking, payment };
     });
+    bookingId = result.booking.id;
+    paymentId = result.payment.id;
   } catch {
     return { error: "Ese turno se acaba de ocupar." };
   }
 
+  const baseUrl = process.env.AUTH_URL ?? "";
+  const pref = await createMpPreference({
+    paymentId,
+    amountCents: depositCents,
+    description: `Seña ${club.name} · ${dateStr} ${minutesToTime(startMinutes)}`,
+    successUrl: `${baseUrl}/mis-turnos`,
+    failureUrl: `${baseUrl}/mis-turnos`,
+    notificationUrl: `${baseUrl}/api/mp/webhook`,
+  });
+
+  if (!pref) {
+    // Sin MP configurado: liberar el turno reservado en PENDING.
+    await prisma.booking.delete({ where: { id: bookingId } }).catch(() => {});
+    await prisma.payment.delete({ where: { id: paymentId } }).catch(() => {});
+    return { error: "El club no tiene MercadoPago configurado." };
+  }
+
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: { mpPreferenceId: pref.preferenceId },
+  });
+
   revalidatePath(`/club/${slug}`);
-  return {};
+  return { redirectUrl: pref.initPoint };
 }

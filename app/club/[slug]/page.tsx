@@ -15,6 +15,13 @@ import {
 import { loadDaySlots } from "@/lib/booking";
 import { crearReservaJugador } from "./actions";
 
+const SPORT_LABEL: Record<string, string> = {
+  PADEL: "Padel",
+  TENIS: "Tenis",
+  FUTBOL: "Fútbol",
+  OTRO: "Otro",
+};
+
 const fmtFecha = (dateStr: string) =>
   new Intl.DateTimeFormat("es-AR", {
     weekday: "long",
@@ -30,7 +37,7 @@ export default async function ClubPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; sport?: string }>;
 }) {
   const { slug } = await params;
   const club = await getClubBySlug(slug);
@@ -56,6 +63,18 @@ export default async function ClubPage({
   if (dateStr > maxDate) dateStr = maxDate;
 
   const { courts, slotsByCourt } = await loadDaySlots(club.id, club.timezone, dateStr);
+
+  // Filtro por deporte (tabs): solo se muestra si el club tiene varios deportes.
+  const ALLOWED_SPORTS = ["PADEL", "TENIS", "FUTBOL", "OTRO"] as const;
+  const sportFilter =
+    sp.sport && (ALLOWED_SPORTS as readonly string[]).includes(sp.sport)
+      ? sp.sport
+      : null;
+  const clubSports = Array.from(new Set(courts.map((c) => c.sport)));
+  const filteredCourts = sportFilter
+    ? courts.filter((c) => c.sport === sportFilter)
+    : courts;
+  const sportQs = sportFilter ? `&sport=${sportFilter}` : "";
 
   // No filtrar nombres de otros clientes hacia el público: solo estado/horario/precio.
   const publicSlots: typeof slotsByCourt = {};
@@ -85,7 +104,12 @@ export default async function ClubPage({
             <ArrowRightIcon width={16} height={16} />
           </Link>
         ) : isLoggedIn ? (
-          <span className="text-sm text-slate-400">{session?.user?.name ?? "Jugador"}</span>
+          <Link
+            href="/mis-turnos"
+            className="text-sm font-medium text-slate-200 hover:text-white"
+          >
+            Mis turnos
+          </Link>
         ) : (
           <Link
             href="/ingresar"
@@ -113,10 +137,40 @@ export default async function ClubPage({
           </p>
         )}
 
+        {clubSports.length > 1 && (
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <Link
+              href={`/club/${slug}?date=${dateStr}`}
+              className={[
+                "rounded-full px-4 py-1.5 text-sm transition-colors",
+                !sportFilter
+                  ? "border border-brand-400/40 bg-brand-500/15 text-brand-200"
+                  : "border border-white/15 text-slate-300 hover:bg-white/5",
+              ].join(" ")}
+            >
+              Todos
+            </Link>
+            {clubSports.map((s) => (
+              <Link
+                key={s}
+                href={`/club/${slug}?date=${dateStr}&sport=${s}`}
+                className={[
+                  "rounded-full px-4 py-1.5 text-sm transition-colors",
+                  sportFilter === s
+                    ? "border border-brand-400/40 bg-brand-500/15 text-brand-200"
+                    : "border border-white/15 text-slate-300 hover:bg-white/5",
+                ].join(" ")}
+              >
+                {SPORT_LABEL[s] ?? s}
+              </Link>
+            ))}
+          </div>
+        )}
+
         <div className="mt-6 flex flex-wrap items-center gap-2">
           {canPrev ? (
             <Link
-              href={`/club/${slug}?date=${prev}`}
+              href={`/club/${slug}?date=${prev}${sportQs}`}
               className="rounded-lg border border-white/15 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
             >
               ← Anterior
@@ -131,7 +185,7 @@ export default async function ClubPage({
           </span>
           {canNext ? (
             <Link
-              href={`/club/${slug}?date=${next}`}
+              href={`/club/${slug}?date=${next}${sportQs}`}
               className="rounded-lg border border-white/15 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
             >
               Siguiente →
@@ -153,7 +207,7 @@ export default async function ClubPage({
             date={dateStr}
             isLoggedIn={isLoggedIn}
             clubBaseUrl={clubUrl(slug)}
-            courts={courts}
+            courts={filteredCourts}
             slotsByCourt={publicSlots}
             crearAction={crearReservaJugador}
           />

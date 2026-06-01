@@ -99,10 +99,19 @@ model Club {
   // Cuenta de MercadoPago del club (token encriptado en reposo).
   mpAccessToken String?
 
-  // Seña: cómo cobrar el depósito al reservar (MercadoPago).
+  // Seña: cómo cobrar el depósito al reservar.
   depositMode        DepositMode @default(NONE)
   depositAmountCents Int         @default(0) // usado si depositMode = FIXED
   depositPercent     Int         @default(0) // usado si depositMode = PERCENT (0-100)
+
+  // Medios de pago disponibles. mpEnabled / whatsappEnabled los habilita el
+  // SUPERADMIN de la plataforma. whatsappPhone lo carga el club.
+  mpEnabled       Boolean @default(true)
+  whatsappEnabled Boolean @default(false)
+  whatsappPhone   String?
+  // Minutos para que el jugador envíe el comprobante (flujo WhatsApp).
+  // Si vence sin que el club confirme el pago, se libera el slot.
+  proofWindowMinutes Int @default(15)
 
   subscriptionStatus SubscriptionStatus @default(TRIALING)
 
@@ -271,6 +280,10 @@ model Booking {
   notes         String?
 
   paymentId String? @unique
+
+  // Vencimiento del flujo de comprobante (WhatsApp). Si está seteado y pasó,
+  // el booking PENDING se considera EXPIRADO y libera el slot.
+  proofDeadline DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

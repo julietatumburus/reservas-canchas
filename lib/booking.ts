@@ -67,11 +67,17 @@ export async function loadDaySlots(
         .map((c) => ({ startMinutes: c.startMinutes, endMinutes: c.endMinutes })),
       bookings: bookings
         .filter((b) => b.courtId === court.id)
+        .filter(
+          (b) =>
+            // Las PENDING con comprobante vencido se consideran liberadas.
+            !(b.status === "PENDING" && b.proofDeadline && b.proofDeadline <= new Date()),
+        )
         .map((b) => ({
           id: b.id,
           startMinutes: utcToLocalMinutes(b.startTime, timezone),
           endMinutes: utcToLocalMinutes(b.endTime, timezone),
           label: b.customerName ?? b.user?.name ?? "Reservado",
+          pending: b.status === "PENDING",
         })),
       recurring: recurring
         .filter((r) => r.courtId === court.id)
@@ -136,9 +142,13 @@ export async function validarSlot(
   const { start, end } = dayRangeUtc(dateStr, timezone);
   const reservas = await prisma.booking.findMany({
     where: { courtId, status: { not: "CANCELLED" }, startTime: { gte: start, lt: end } },
-    select: { startTime: true, endTime: true },
+    select: { startTime: true, endTime: true, status: true, proofDeadline: true },
   });
-  const pisada = reservas.some((b) => {
+  const now = new Date();
+  const activas = reservas.filter(
+    (b) => !(b.status === "PENDING" && b.proofDeadline && b.proofDeadline <= now),
+  );
+  const pisada = activas.some((b) => {
     const bs = utcToLocalMinutes(b.startTime, timezone);
     const be = utcToLocalMinutes(b.endTime, timezone);
     return startMinutes < be && bs < endMinutes;

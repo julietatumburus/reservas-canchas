@@ -38,8 +38,12 @@ export default async function MisTurnosPage() {
     },
     orderBy: { startTime: "desc" },
   });
-  const upcoming = all.filter((b) => b.startTime > now).reverse(); // próximos asc
-  const past = all.filter((b) => b.startTime <= now);
+  // Excluir reservas PENDING cuyo comprobante venció (slot liberado).
+  const active = all.filter(
+    (b) => !(b.status === "PENDING" && b.proofDeadline && b.proofDeadline <= now),
+  );
+  const upcoming = active.filter((b) => b.startTime > now).reverse();
+  const past = active.filter((b) => b.startTime <= now);
 
   async function cerrarSesion() {
     "use server";
@@ -119,6 +123,7 @@ type BookingRow = {
   startTime: Date;
   endTime: Date;
   priceCents: number;
+  status: string;
   club: { name: string; slug: string; timezone: string };
   court: { name: string };
 };
@@ -135,7 +140,14 @@ function BookingCard({
     <div className="rounded-2xl border border-white/8 bg-surface/50 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-semibold text-white">{booking.club.name}</p>
+          <p className="flex items-center gap-2 font-semibold text-white">
+            {booking.club.name}
+            {booking.status === "PENDING" && (
+              <span className="rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-200">
+                Pendiente
+              </span>
+            )}
+          </p>
           <p className="mt-0.5 text-sm text-slate-400">{booking.court.name}</p>
           <p className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-300">
             <span className="inline-flex items-center gap-1.5 capitalize">

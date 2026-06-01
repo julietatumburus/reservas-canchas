@@ -121,6 +121,7 @@ export type AgendaSlot = {
   label?: string; // cliente / motivo del cierre
   bookingId?: string; // presente solo si arranca acá una reserva cancelable
   recurring?: boolean; // ocupado por un turno fijo
+  pending?: boolean; // booking PENDING esperando confirmación de pago
   durations: SlotDuration[]; // opciones libres (vacío si no está libre)
 };
 
@@ -131,7 +132,12 @@ type Window = {
   priceCents: number;
 };
 type Closure = { startMinutes: number | null; endMinutes: number | null };
-type Occupancy = { startMinutes: number; endMinutes: number; label: string };
+type Occupancy = {
+  startMinutes: number;
+  endMinutes: number;
+  label: string;
+  pending?: boolean;
+};
 
 /**
  * Slots de una cancha en un día, agrupados por horario de inicio. Cada inicio
@@ -192,6 +198,7 @@ export function computeDaySlots(input: {
     let label: string | undefined;
     let bookingId: string | undefined;
     let isRecurring = false;
+    let isPending = false;
 
     if (free.length === 0) {
       const probeEnd = durs[0].endMinutes; // la duración más corta indica qué lo bloquea
@@ -201,6 +208,7 @@ export function computeDaySlots(input: {
         status = "booked";
         label = own.label;
         bookingId = own.id;
+        isPending = !!own.pending;
       } else if (fijoAqui) {
         status = "booked";
         label = fijoAqui.label;
@@ -219,6 +227,7 @@ export function computeDaySlots(input: {
       label,
       bookingId,
       recurring: isRecurring,
+      pending: isPending,
       durations: free,
     });
   }

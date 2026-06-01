@@ -11,11 +11,20 @@ import {
   shiftDate,
   utcToLocalMinutes,
 } from "@/lib/availability";
-import { minutesToTime } from "@/lib/slots";
+import { minutesToTime, formatCents } from "@/lib/slots";
 import { validarSlot } from "@/lib/booking";
-import { computeDeposit, createMpPreference } from "@/lib/payments";
+import {
+  computeDeposit,
+  createMpPreference,
+  buildWhatsappLink,
+} from "@/lib/payments";
 
-export type ReservaResult = { error?: string; redirectUrl?: string };
+export type ReservaResult = {
+  error?: string;
+  redirectUrl?: string; // MercadoPago checkout
+  whatsappLink?: string; // wa.me con mensaje prearmado
+  deadlineISO?: string; // vencimiento del comprobante (ISO)
+};
 
 export async function crearReservaJugador(
   formData: FormData,
@@ -41,7 +50,6 @@ export async function crearReservaJugador(
     return { error: "Horario inválido." };
   }
 
-  // Ventana de reserva: desde hoy hasta hoy + bookingWindowDays.
   const today = todayInTz(club.timezone);
   const maxDate = shiftDate(today, club.bookingWindowDays);
   if (dateStr < today) return { error: "No se puede reservar en el pasado." };
@@ -71,7 +79,7 @@ export async function crearReservaJugador(
   const endUtc = localToUtc(dateStr, endMinutes, club.timezone);
   const depositCents = computeDeposit(priceCents, club);
 
-  // Sin seña: confirmar el turno directo.
+  // Sin seña: confirmar directo.
   if (depositCents <= 0) {
     try {
       await prisma.booking.create({
@@ -93,7 +101,21 @@ export async function crearReservaJugador(
     return {};
   }
 
-  // Con seña: turno PENDING + Payment PENDING + Preference de MP.
+  // Hay seña: elegir método según config del club.
+  const mpAvailable = club.mpEnabled && !!process.env.MP_ACCESS_TOKEN;
+  const waAvailable = club.whatsappEnabled && !!club.whatsappPhone;
+
+  if (!mpAvailable && !waAvailable) {
+    return { error: "El club no tiene un medio de pago configurado para la seña." };
+  }
+
+  // Crear el booking PENDING + Payment PENDING (la única variable es el deadline
+  // que aplica solo al flujo WhatsApp; en MP no se usa).
+  const useWhatsapp = !mpAvailable; // si MP no está, vamos por WhatsApp (si está)
+  const proofDeadline = useWhatsapp
+    ? new Date(Date.now() + club.proofWindowMinutes * 60_000)
+    : null;
+
   let bookingId: string;
   let paymentId: string;
   try {
@@ -118,6 +140,7 @@ export async function crearReservaJugador(
           priceCents,
           customerName: session.user.name ?? null,
           paymentId: payment.id,
+          proofDeadline,
         },
       });
       return { booking, payment };
@@ -128,6 +151,21 @@ export async function crearReservaJugador(
     return { error: "Ese turno se acaba de ocupar." };
   }
 
+  // --- Flujo WhatsApp ---
+  if (useWhatsapp && club.whatsappPhone) {
+    const fechaTxt = `${dateStr} ${minutesToTime(startMinutes)}–${minutesToTime(endMinutes)}`;
+    const message =
+      `Hola! Reservé en ${club.name} - ${court.name} - ${fechaTxt}. ` +
+      `Te envío comprobante de transferencia de la seña (${formatCents(depositCents)}).`;
+    const link = buildWhatsappLink(club.whatsappPhone, message);
+    revalidatePath(`/club/${slug}`);
+    return {
+      whatsappLink: link,
+      deadlineISO: proofDeadline?.toISOString(),
+    };
+  }
+
+  // --- Flujo MercadoPago ---
   const baseUrl = process.env.AUTH_URL ?? "";
   const pref = await createMpPreference({
     paymentId,
@@ -139,10 +177,10 @@ export async function crearReservaJugador(
   });
 
   if (!pref) {
-    // Sin MP configurado: liberar el turno reservado en PENDING.
+    // Rollback si MP falló y no había alternativa.
     await prisma.booking.delete({ where: { id: bookingId } }).catch(() => {});
     await prisma.payment.delete({ where: { id: paymentId } }).catch(() => {});
-    return { error: "El club no tiene MercadoPago configurado." };
+    return { error: "No pudimos generar el cobro con MercadoPago." };
   }
 
   await prisma.payment.update({

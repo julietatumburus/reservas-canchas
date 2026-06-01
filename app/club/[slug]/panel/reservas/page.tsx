@@ -4,7 +4,11 @@ import { dateOnlyUtc, isValidDateStr, shiftDate, todayInTz } from "@/lib/availab
 import { loadDaySlots } from "@/lib/booking";
 import { AgendaGrid } from "@/components/panel/agenda-grid";
 import { CalendarIcon } from "@/components/icons";
-import { crearReservaManual, cancelarReserva } from "../actions";
+import {
+  crearReservaManual,
+  cancelarReserva,
+  confirmarPagoReserva,
+} from "../actions";
 
 const fmtFecha = (dateStr: string) =>
   new Intl.DateTimeFormat("es-AR", {
@@ -102,6 +106,7 @@ export default async function ReservasPage({
           slotsByCourt={slotsByCourt}
           crearAction={crearReservaManual}
           cancelarAction={cancelarReserva}
+          confirmarPagoAction={confirmarPagoReserva}
         />
       )}
     </div>

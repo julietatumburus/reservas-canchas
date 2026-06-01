@@ -103,11 +103,57 @@ export default async function AjustesPage({
           </div>
 
           <p className="mt-3 text-[11px] text-slate-500">
-            Necesitás configurar la variable <code>MP_ACCESS_TOKEN</code> en el
-            server con el token de MercadoPago. Sin token, los turnos con seña no
-            se pueden cobrar.
+            {club.mpEnabled
+              ? "MercadoPago está habilitado para este club. Necesitás configurar MP_ACCESS_TOKEN en el server."
+              : "MercadoPago no está habilitado para este club. Pedí al administrador de la plataforma que lo active."}
           </p>
         </div>
+
+        {club.whatsappEnabled && (
+          <div className="border-t border-white/8 pt-4">
+            <span className="text-sm font-semibold text-white">
+              Cobro por WhatsApp (transferencia)
+            </span>
+            <p className="mt-1 text-xs text-slate-400">
+              El jugador reserva y te envía el comprobante de transferencia por
+              WhatsApp. Vos confirmás el pago manualmente desde la agenda.
+            </p>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs text-slate-400">
+                Tu WhatsApp
+                <input
+                  name="whatsappPhone"
+                  type="tel"
+                  placeholder="+54 9 11 5555 5555"
+                  defaultValue={club.whatsappPhone ?? ""}
+                  disabled={!canEdit}
+                  className={inputClass + " mt-1"}
+                />
+                <span className="mt-1 block text-[11px] text-slate-500">
+                  Formato internacional, sin espacios opcional.
+                </span>
+              </label>
+
+              <label className="block text-xs text-slate-400">
+                Ventana para enviar comprobante (min)
+                <input
+                  type="number"
+                  name="proofWindowMinutes"
+                  min={5}
+                  max={120}
+                  step={5}
+                  defaultValue={club.proofWindowMinutes}
+                  disabled={!canEdit}
+                  className={inputClass + " mt-1"}
+                />
+                <span className="mt-1 block text-[11px] text-slate-500">
+                  Si vence sin que confirmes el pago, el slot se libera.
+                </span>
+              </label>
+            </div>
+          </div>
+        )}
 
         {canEdit && (
           <button

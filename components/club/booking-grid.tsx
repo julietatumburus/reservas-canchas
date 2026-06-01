@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { formatCents } from "@/lib/slots";
 import type { AgendaSlot } from "@/lib/availability";
 
@@ -12,7 +12,12 @@ const SPORT_LABEL: Record<string, string> = {
 };
 
 type Court = { id: string; name: string; sport: string };
-type ReservaResult = { error?: string; redirectUrl?: string };
+type ReservaResult = {
+  error?: string;
+  redirectUrl?: string;
+  whatsappLink?: string;
+  deadlineISO?: string;
+};
 
 export function BookingGrid({
   slug,
@@ -141,6 +146,9 @@ function ConfirmarModal({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [waState, setWaState] = useState<{ link: string; deadline: Date } | null>(
+    null,
+  );
   const [pending, start] = useTransition();
   const [durIdx, setDurIdx] = useState(0);
   const dur = slot.durations[durIdx];
@@ -154,6 +162,8 @@ function ConfirmarModal({
       } else if (res?.redirectUrl) {
         // Seña con MercadoPago: el jugador va al checkout.
         window.location.href = res.redirectUrl;
+      } else if (res?.whatsappLink && res?.deadlineISO) {
+        setWaState({ link: res.whatsappLink, deadline: new Date(res.deadlineISO) });
       } else {
         setDone(true);
       }
@@ -169,7 +179,16 @@ function ConfirmarModal({
         className="w-full max-w-sm rounded-2xl border border-white/10 bg-bg-soft p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {done ? (
+        {waState ? (
+          <WhatsappPrompt
+            court={court}
+            slot={slot}
+            dur={dur}
+            link={waState.link}
+            deadline={waState.deadline}
+            onClose={onClose}
+          />
+        ) : done ? (
           <div className="text-center">
             <p className="text-base font-semibold text-white">¡Turno reservado!</p>
             <p className="mt-1 text-sm text-slate-400">
@@ -246,6 +265,75 @@ function ConfirmarModal({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function WhatsappPrompt({
+  court,
+  slot,
+  dur,
+  link,
+  deadline,
+  onClose,
+}: {
+  court: Court;
+  slot: AgendaSlot;
+  dur: AgendaSlot["durations"][number];
+  link: string;
+  deadline: Date;
+  onClose: () => void;
+}) {
+  const [remaining, setRemaining] = useState(() => deadline.getTime() - Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setRemaining(deadline.getTime() - Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [deadline]);
+
+  const expired = remaining <= 0;
+  const mm = Math.max(0, Math.floor(remaining / 60_000));
+  const ss = Math.max(0, Math.floor((remaining % 60_000) / 1000));
+
+  return (
+    <div className="text-center">
+      <p className="text-base font-semibold text-white">¡Turno reservado!</p>
+      <p className="mt-1 text-sm text-slate-400">
+        {court.name} · {slot.start}–{dur.end}
+      </p>
+
+      {expired ? (
+        <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          Se venció el tiempo para enviar el comprobante. El turno se va a
+          liberar.
+        </p>
+      ) : (
+        <>
+          <p className="mt-4 rounded-xl border border-brand-500/20 bg-brand-500/10 px-4 py-3 text-sm text-brand-100">
+            Envianos el <b>comprobante de transferencia</b> por WhatsApp en los
+            próximos{" "}
+            <b>
+              {String(mm).padStart(2, "0")}:{String(ss).padStart(2, "0")}
+            </b>{" "}
+            min. El club confirma el pago al recibirlo.
+          </p>
+          <a
+            href={link}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-semibold text-[#0a3a1a]"
+          >
+            Abrir WhatsApp
+          </a>
+        </>
+      )}
+
+      <button
+        onClick={onClose}
+        className="mt-3 w-full rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/5"
+      >
+        Cerrar
+      </button>
     </div>
   );
 }

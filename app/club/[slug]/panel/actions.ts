@@ -139,6 +139,17 @@ export async function actualizarAjustes(formData: FormData) {
     Math.max(0, Math.round(Number(formData.get("depositPercent") ?? 0))),
   );
 
+  // WhatsApp: solo se persiste si el superadmin lo habilitó para este club.
+  const whatsappPhoneRaw = String(formData.get("whatsappPhone") ?? "").trim();
+  const whatsappPhone = whatsappPhoneRaw.length > 0 ? whatsappPhoneRaw : null;
+
+  // Ventana del comprobante (minutos): 5..120.
+  const proofRaw = Math.round(Number(formData.get("proofWindowMinutes") ?? 15));
+  const proofWindowMinutes = Math.min(
+    120,
+    Math.max(5, Number.isFinite(proofRaw) ? proofRaw : 15),
+  );
+
   await prisma.club.update({
     where: { id: club.id },
     data: {
@@ -146,6 +157,8 @@ export async function actualizarAjustes(formData: FormData) {
       depositMode,
       depositAmountCents,
       depositPercent,
+      whatsappPhone,
+      proofWindowMinutes,
     },
   });
   revalidatePath(`/club/${slug}/panel/ajustes`);
@@ -282,6 +295,33 @@ export async function cancelarReserva(formData: FormData) {
 
   await prisma.booking.deleteMany({
     where: { id: bookingId, clubId: club.id },
+  });
+  revalidatePath(`/club/${slug}/panel/reservas`);
+}
+
+/** El staff marca el pago recibido (transferencia/WhatsApp) → CONFIRMED. */
+export async function confirmarPagoReserva(formData: FormData) {
+  const slug = String(formData.get("slug"));
+  const bookingId = String(formData.get("bookingId") ?? "");
+  const { club } = await requireClubAccess(slug);
+
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, clubId: club.id },
+    select: { id: true, paymentId: true, status: true },
+  });
+  if (!booking || booking.status !== "PENDING") return;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.booking.update({
+      where: { id: booking.id },
+      data: { status: "CONFIRMED", proofDeadline: null },
+    });
+    if (booking.paymentId) {
+      await tx.payment.update({
+        where: { id: booking.paymentId },
+        data: { status: "APPROVED" },
+      });
+    }
   });
   revalidatePath(`/club/${slug}/panel/reservas`);
 }

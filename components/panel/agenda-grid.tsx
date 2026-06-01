@@ -15,6 +15,7 @@ export function AgendaGrid({
   slotsByCourt,
   crearAction,
   cancelarAction,
+  confirmarPagoAction,
 }: {
   slug: string;
   date: string;
@@ -23,6 +24,7 @@ export function AgendaGrid({
   slotsByCourt: Record<string, AgendaSlot[]>;
   crearAction: (fd: FormData) => Promise<ReservaResult>;
   cancelarAction: (fd: FormData) => Promise<void> | void;
+  confirmarPagoAction: (fd: FormData) => Promise<void> | void;
 }) {
   const [sel, setSel] = useState<{ court: Court; slot: AgendaSlot } | null>(null);
 
@@ -51,6 +53,7 @@ export function AgendaGrid({
                       canEdit={canEdit}
                       onBook={() => setSel({ court, slot })}
                       cancelarAction={cancelarAction}
+                      confirmarPagoAction={confirmarPagoAction}
                     />
                   ))}
                 </div>
@@ -80,12 +83,14 @@ function SlotRow({
   canEdit,
   onBook,
   cancelarAction,
+  confirmarPagoAction,
 }: {
   slot: AgendaSlot;
   slug: string;
   canEdit: boolean;
   onBook: () => void;
   cancelarAction: (fd: FormData) => Promise<void> | void;
+  confirmarPagoAction: (fd: FormData) => Promise<void> | void;
 }) {
   if (slot.status === "closed") {
     return (
@@ -97,25 +102,49 @@ function SlotRow({
   }
 
   if (slot.status === "booked") {
+    const pending = slot.pending;
+    const wrapperCls = pending
+      ? "rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs"
+      : "rounded-xl border border-brand-500/20 bg-brand-500/10 px-3 py-2 text-xs";
+    const nameCls = pending ? "text-amber-200" : "text-brand-200";
     return (
-      <div className="flex items-center justify-between gap-2 rounded-xl border border-brand-500/20 bg-brand-500/10 px-3 py-2 text-xs">
+      <div className={`flex items-center justify-between gap-2 ${wrapperCls}`}>
         <span className="min-w-0">
           <span className="text-slate-300">{slot.start}</span>{" "}
-          <span className="truncate font-medium text-brand-200">
+          <span className={`truncate font-medium ${nameCls}`}>
             {slot.label ?? "Ocupado"}
           </span>
+          {pending && (
+            <span className="ml-1 rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-200">
+              pendiente
+            </span>
+          )}
         </span>
         {canEdit && slot.bookingId ? (
-          <form action={cancelarAction}>
-            <input type="hidden" name="slug" value={slug} />
-            <input type="hidden" name="bookingId" value={slot.bookingId} />
-            <button
-              type="submit"
-              className="shrink-0 rounded-md border border-red-500/20 px-2 py-1 text-[11px] text-red-300 hover:bg-red-500/10"
-            >
-              Liberar
-            </button>
-          </form>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {pending && (
+              <form action={confirmarPagoAction}>
+                <input type="hidden" name="slug" value={slug} />
+                <input type="hidden" name="bookingId" value={slot.bookingId} />
+                <button
+                  type="submit"
+                  className="rounded-md border border-emerald-500/30 px-2 py-1 text-[11px] text-emerald-300 hover:bg-emerald-500/10"
+                >
+                  Confirmar pago
+                </button>
+              </form>
+            )}
+            <form action={cancelarAction}>
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="bookingId" value={slot.bookingId} />
+              <button
+                type="submit"
+                className="rounded-md border border-red-500/20 px-2 py-1 text-[11px] text-red-300 hover:bg-red-500/10"
+              >
+                Liberar
+              </button>
+            </form>
+          </div>
         ) : (
           slot.recurring && (
             <span className="shrink-0 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-400">

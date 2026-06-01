@@ -82,6 +82,12 @@ export async function fetchMpPayment(mpPaymentId: string): Promise<{
   };
 }
 
+/** Construye el link de wa.me con un mensaje prearmado. */
+export function buildWhatsappLink(phone: string, message: string): string {
+  const digits = phone.replace(/[^\d]/g, "");
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+}
+
 /** Mapeo del status de MP a nuestro enum PaymentStatus. */
 export function mapMpStatus(
   mp: string,

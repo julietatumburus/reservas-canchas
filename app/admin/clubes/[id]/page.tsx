@@ -8,6 +8,7 @@ import {
   asignarMiembro,
   quitarMiembro,
   cambiarEstadoSuscripcion,
+  cambiarMediosPago,
 } from "../../actions";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -71,6 +72,41 @@ export default async function ClubDetailPage({
             <option value="PAST_DUE">Vencida</option>
             <option value="CANCELLED">Cancelada</option>
           </select>
+          <button
+            type="submit"
+            className="rounded-lg bg-gradient-to-r from-brand-400 to-accent-400 px-4 py-2 text-sm font-semibold text-[#06121f]"
+          >
+            Guardar
+          </button>
+        </form>
+      </section>
+
+      {/* Medios de pago */}
+      <section className="rounded-2xl border border-white/8 bg-surface/50 p-5">
+        <p className="text-sm font-semibold text-white">Medios de pago</p>
+        <p className="mt-1 text-xs text-slate-400">
+          Qué opciones tiene disponibles este club para cobrar la seña.
+        </p>
+        <form action={cambiarMediosPago} className="mt-4 space-y-3">
+          <input type="hidden" name="clubId" value={club.id} />
+          <label className="flex items-center gap-2 text-sm text-slate-200">
+            <input
+              type="checkbox"
+              name="mpEnabled"
+              defaultChecked={club.mpEnabled}
+              className="accent-brand-400"
+            />
+            MercadoPago (cobro online)
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-200">
+            <input
+              type="checkbox"
+              name="whatsappEnabled"
+              defaultChecked={club.whatsappEnabled}
+              className="accent-brand-400"
+            />
+            WhatsApp (jugador envía comprobante de transferencia)
+          </label>
           <button
             type="submit"
             className="rounded-lg bg-gradient-to-r from-brand-400 to-accent-400 px-4 py-2 text-sm font-semibold text-[#06121f]"

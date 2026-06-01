@@ -56,3 +56,17 @@ export async function cambiarEstadoSuscripcion(formData: FormData) {
   revalidatePath(`/admin/clubes/${clubId}`);
   revalidatePath(`/admin`);
 }
+
+/** SUPERADMIN habilita/deshabilita los medios de pago disponibles para el club. */
+export async function cambiarMediosPago(formData: FormData) {
+  await requireSuperadmin();
+  const clubId = String(formData.get("clubId"));
+  const mpEnabled = formData.get("mpEnabled") === "on";
+  const whatsappEnabled = formData.get("whatsappEnabled") === "on";
+
+  await prisma.club.update({
+    where: { id: clubId },
+    data: { mpEnabled, whatsappEnabled },
+  });
+  revalidatePath(`/admin/clubes/${clubId}`);
+}
